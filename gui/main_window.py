@@ -59,7 +59,6 @@ class MainWindow(QMainWindow):
         self.current_images: List[Path] = []
 
         self.setup_ui()
-        self.setup_menu()
         self.setup_toolbar()
         self.setup_statusbar()
         self.connect_signals()
@@ -102,56 +101,6 @@ class MainWindow(QMainWindow):
 
         main_layout.addWidget(splitter)
 
-    def setup_menu(self):
-        """Setup menu bar"""
-        menubar = self.menuBar()
-
-        # File menu
-        file_menu = menubar.addMenu("&File")
-
-        add_images_action = QAction("&Add Images...", self)
-        add_images_action.setShortcut("Ctrl+O")
-        add_images_action.triggered.connect(self.add_images)
-        file_menu.addAction(add_images_action)
-
-        add_folder_action = QAction("Add &Folder...", self)
-        add_folder_action.setShortcut("Ctrl+Shift+O")
-        add_folder_action.triggered.connect(self.add_folder)
-        file_menu.addAction(add_folder_action)
-
-        file_menu.addSeparator()
-
-        clear_action = QAction("&Clear All", self)
-        clear_action.triggered.connect(self.clear_images)
-        file_menu.addAction(clear_action)
-
-        file_menu.addSeparator()
-
-        exit_action = QAction("E&xit", self)
-        exit_action.setShortcut("Ctrl+Q")
-        exit_action.triggered.connect(self.close)
-        file_menu.addAction(exit_action)
-
-        # Profile menu
-        profile_menu = menubar.addMenu("&Profiles")
-
-        save_profile_action = QAction("&Save Profile...", self)
-        save_profile_action.setShortcut("Ctrl+S")
-        save_profile_action.triggered.connect(self.save_profile)
-        profile_menu.addAction(save_profile_action)
-
-        load_profile_action = QAction("&Load Profile...", self)
-        load_profile_action.setShortcut("Ctrl+L")
-        load_profile_action.triggered.connect(self.load_profile)
-        profile_menu.addAction(load_profile_action)
-
-        # Help menu
-        help_menu = menubar.addMenu("&Help")
-
-        about_action = QAction("&About", self)
-        about_action.triggered.connect(self.show_about)
-        help_menu.addAction(about_action)
-
     def setup_toolbar(self):
         """Setup toolbar"""
         toolbar = QToolBar("Main Toolbar")
@@ -189,10 +138,24 @@ class MainWindow(QMainWindow):
         toolbar.addSeparator()
 
         # Output folder button
-        output_btn = QAction("Set Output Folder", self)
+        output_btn = QAction("Output Folder", self)
         output_btn.setToolTip("Choose where to save watermarked images")
         output_btn.triggered.connect(self.set_output_folder)
         toolbar.addAction(output_btn)
+
+        toolbar.addSeparator()
+
+        # Save profile button
+        save_btn = QAction("Save Profile", self)
+        save_btn.setToolTip("Save current watermark settings as a profile")
+        save_btn.triggered.connect(self.save_profile)
+        toolbar.addAction(save_btn)
+
+        # Load profile button
+        load_btn = QAction("Load Profile", self)
+        load_btn.setToolTip("Load a saved watermark profile")
+        load_btn.triggered.connect(self.load_profile)
+        toolbar.addAction(load_btn)
 
     def setup_statusbar(self):
         """Setup status bar"""
