@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt
 
 from gui.main_window import MainWindow
+from gui.styles import DARK_THEME
 from config import APP_NAME
 
 
@@ -19,6 +20,9 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
     app.setStyle('Fusion')
+
+    # Apply dark theme
+    app.setStyleSheet(DARK_THEME)
 
     window = MainWindow()
     window.show()

@@ -26,16 +26,22 @@ class ColorButton(QPushButton):
     def __init__(self, color: Tuple[int, int, int] = (255, 255, 255)):
         super().__init__()
         self._color = color
-        self.setFixedSize(50, 25)
+        self.setFixedSize(60, 30)
         self.update_style()
         self.clicked.connect(self.pick_color)
 
     def update_style(self):
         r, g, b = self._color
+        # Calculate contrasting text color
+        brightness = (r * 299 + g * 587 + b * 114) / 1000
+        text_color = "#000" if brightness > 128 else "#fff"
         self.setStyleSheet(
             f"background-color: rgb({r},{g},{b}); "
-            f"border: 1px solid #888;"
+            f"border: 2px solid #555; "
+            f"border-radius: 6px; "
+            f"color: {text_color};"
         )
+        self.setText("")
 
     def pick_color(self):
         color = QColorDialog.getColor(QColor(*self._color), self)
@@ -62,10 +68,12 @@ class TextWatermarkWidget(QWidget):
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(12)
 
         # Enable checkbox
         self.enabled_check = QCheckBox("Enable Text Watermark")
+        self.enabled_check.setStyleSheet("font-weight: bold; font-size: 14px;")
         self.enabled_check.stateChanged.connect(self.settings_changed.emit)
         layout.addWidget(self.enabled_check)
 

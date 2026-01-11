@@ -34,11 +34,12 @@ class PreviewPanel(QWidget):
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(12)
 
         # Header
         header = QLabel("Preview")
-        header.setStyleSheet("font-weight: bold; font-size: 14px;")
+        header.setProperty("header", True)
         layout.addWidget(header)
 
         # Scroll area for image
@@ -50,18 +51,19 @@ class PreviewPanel(QWidget):
         self.image_label = QLabel()
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_label.setStyleSheet(
-            "background-color: #2a2a2a; "
-            "color: #888; "
+            "background-color: #1a1a1a; "
+            "color: #666; "
+            "font-size: 14px;"
         )
         self.image_label.setText("Select an image to preview")
+        self.image_label.setMinimumSize(300, 300)
 
         self.scroll_area.setWidget(self.image_label)
-        self.scroll_area.setStyleSheet("border: 1px solid #444;")
-        layout.addWidget(self.scroll_area)
+        layout.addWidget(self.scroll_area, 1)
 
         # Info label
         self.info_label = QLabel("")
-        self.info_label.setStyleSheet("color: #888; font-size: 11px;")
+        self.info_label.setStyleSheet("color: #888; font-size: 12px; padding: 4px;")
         layout.addWidget(self.info_label)
 
     def load_image(self, path: Path):

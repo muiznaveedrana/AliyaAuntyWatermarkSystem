@@ -67,8 +67,8 @@ class MainWindow(QMainWindow):
     def setup_ui(self):
         """Setup the main UI layout"""
         self.setWindowTitle(f"{APP_NAME} v{APP_VERSION}")
-        self.setMinimumSize(1000, 700)
-        self.resize(1200, 800)
+        self.setMinimumSize(1100, 750)
+        self.resize(1300, 850)
 
         # Central widget
         central_widget = QWidget()
@@ -76,24 +76,29 @@ class MainWindow(QMainWindow):
 
         # Main layout with splitter
         main_layout = QHBoxLayout(central_widget)
-        main_layout.setContentsMargins(5, 5, 5, 5)
+        main_layout.setContentsMargins(8, 8, 8, 8)
+        main_layout.setSpacing(0)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setHandleWidth(3)
 
         # Left panel - Image list
         self.image_list_panel = ImageListPanel()
+        self.image_list_panel.setMinimumWidth(250)
         splitter.addWidget(self.image_list_panel)
 
         # Middle panel - Watermark settings
         self.watermark_panel = WatermarkPanel()
+        self.watermark_panel.setMinimumWidth(320)
         splitter.addWidget(self.watermark_panel)
 
         # Right panel - Preview
         self.preview_panel = PreviewPanel()
+        self.preview_panel.setMinimumWidth(350)
         splitter.addWidget(self.preview_panel)
 
-        # Set splitter sizes (30%, 35%, 35%)
-        splitter.setSizes([300, 350, 350])
+        # Set splitter sizes (25%, 35%, 40%)
+        splitter.setSizes([280, 380, 440])
 
         main_layout.addWidget(splitter)
 
