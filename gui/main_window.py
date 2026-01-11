@@ -145,15 +145,15 @@ class MainWindow(QMainWindow):
 
         toolbar.addSeparator()
 
-        # Save profile button
-        save_btn = QAction("Save Profile", self)
-        save_btn.setToolTip("Save current watermark settings as a profile")
+        # Save preset button
+        save_btn = QAction("Save Preset", self)
+        save_btn.setToolTip("Save current watermark settings as a reusable preset")
         save_btn.triggered.connect(self.save_profile)
         toolbar.addAction(save_btn)
 
-        # Load profile button
-        load_btn = QAction("Load Profile", self)
-        load_btn.setToolTip("Load a saved watermark profile")
+        # Load preset button
+        load_btn = QAction("Load Preset", self)
+        load_btn.setToolTip("Load a saved watermark preset")
         load_btn.triggered.connect(self.load_profile)
         toolbar.addAction(load_btn)
 
