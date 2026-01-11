@@ -1,0 +1,16 @@
+# Image Batch Watermarking Tool - Desktop Application
+
+# GUI Framework
+PyQt6>=6.6.0
+
+# Image Processing
+Pillow>=10.0.0
+
+# Data Validation
+pydantic>=2.0.0
+
+# EXIF Data
+exifread>=3.0.0
+
+# Utilities
+python-dotenv>=1.0.0
