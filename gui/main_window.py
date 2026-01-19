@@ -11,7 +11,7 @@ from PyQt6.QtGui import QAction, QIcon
 from pathlib import Path
 from typing import List
 
-from config import APP_NAME, APP_VERSION, OUTPUT_FOLDER
+from config import APP_NAME, APP_VERSION, OUTPUT_FOLDER, SUPPORTED_VIDEO_FORMATS
 from .image_list_panel import ImageListPanel
 from .watermark_panel import WatermarkPanel
 from .preview_panel import PreviewPanel
@@ -108,15 +108,15 @@ class MainWindow(QMainWindow):
         toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
         self.addToolBar(toolbar)
 
-        # Add images button
-        add_btn = QAction("Add Images", self)
-        add_btn.setToolTip("Add image files to process")
+        # Add files button
+        add_btn = QAction("Add Files", self)
+        add_btn.setToolTip("Add image or video files to process")
         add_btn.triggered.connect(self.add_images)
         toolbar.addAction(add_btn)
 
         # Add folder button
         folder_btn = QAction("Add Folder", self)
-        folder_btn.setToolTip("Add all images from a folder")
+        folder_btn.setToolTip("Add all images and videos from a folder")
         folder_btn.triggered.connect(self.add_folder)
         toolbar.addAction(folder_btn)
 
@@ -183,12 +183,12 @@ class MainWindow(QMainWindow):
         self.watermark_panel.settings_changed.connect(self.update_preview)
 
     def add_images(self):
-        """Add images via file dialog"""
+        """Add images/videos via file dialog"""
         files, _ = QFileDialog.getOpenFileNames(
             self,
-            "Select Images",
+            "Select Images and Videos",
             "",
-            "Images (*.jpg *.jpeg *.png *.bmp *.gif *.tiff *.tif *.webp);;All Files (*)"
+            "Media Files (*.jpg *.jpeg *.png *.bmp *.gif *.tiff *.tif *.webp *.mp4 *.avi *.mov *.mkv *.wmv *.flv *.webm *.m4v);;Images (*.jpg *.jpeg *.png *.bmp *.gif *.tiff *.tif *.webp);;Videos (*.mp4 *.avi *.mov *.mkv *.wmv *.flv *.webm *.m4v);;All Files (*)"
         )
 
         if files:
@@ -196,17 +196,22 @@ class MainWindow(QMainWindow):
             self.image_list_panel.add_images(paths)
             self.current_images.extend(paths)
             self.update_count()
-            self.statusbar.showMessage(f"Added {len(files)} images")
+            self.statusbar.showMessage(f"Added {len(files)} file(s)")
 
     def add_folder(self):
-        """Add all images from a folder"""
+        """Add all images and videos from a folder"""
         folder = QFileDialog.getExistingDirectory(self, "Select Folder")
 
         if folder:
             folder_path = Path(folder)
-            extensions = ('*.jpg', '*.jpeg', '*.png', '*.bmp', '*.gif', '*.tiff', '*.tif', '*.webp')
+            # Image extensions
+            image_extensions = ('*.jpg', '*.jpeg', '*.png', '*.bmp', '*.gif', '*.tiff', '*.tif', '*.webp')
+            # Video extensions
+            video_extensions = ('*.mp4', '*.avi', '*.mov', '*.mkv', '*.wmv', '*.flv', '*.webm', '*.m4v')
+            all_extensions = image_extensions + video_extensions
+
             paths = []
-            for ext in extensions:
+            for ext in all_extensions:
                 paths.extend(folder_path.glob(ext))
                 paths.extend(folder_path.glob(ext.upper()))
 
@@ -215,9 +220,9 @@ class MainWindow(QMainWindow):
                 self.image_list_panel.add_images(paths)
                 self.current_images.extend(paths)
                 self.update_count()
-                self.statusbar.showMessage(f"Added {len(paths)} images from folder")
+                self.statusbar.showMessage(f"Added {len(paths)} file(s) from folder")
             else:
-                self.statusbar.showMessage("No images found in folder")
+                self.statusbar.showMessage("No media files found in folder")
 
     def clear_images(self):
         """Clear all images"""
@@ -228,9 +233,20 @@ class MainWindow(QMainWindow):
         self.statusbar.showMessage("Cleared all images")
 
     def update_count(self):
-        """Update image count label"""
+        """Update file count label"""
         count = len(self.current_images)
-        self.count_label.setText(f"{count} image{'s' if count != 1 else ''}")
+        image_count = sum(1 for p in self.current_images if p.suffix.lower() not in SUPPORTED_VIDEO_FORMATS)
+        video_count = sum(1 for p in self.current_images if p.suffix.lower() in SUPPORTED_VIDEO_FORMATS)
+
+        if count == 0:
+            self.count_label.setText("0 files")
+        else:
+            parts = []
+            if image_count > 0:
+                parts.append(f"{image_count} image{'s' if image_count != 1 else ''}")
+            if video_count > 0:
+                parts.append(f"{video_count} video{'s' if video_count != 1 else ''}")
+            self.count_label.setText(" | ".join(parts))
 
     def on_image_selected(self, path: Path):
         """Handle image selection"""
@@ -257,7 +273,7 @@ class MainWindow(QMainWindow):
     def start_processing(self):
         """Start batch processing"""
         if not self.current_images:
-            QMessageBox.warning(self, "No Images", "Please add images to process.")
+            QMessageBox.warning(self, "No Files", "Please add images or videos to process.")
             return
 
         config = self.watermark_panel.get_config()
@@ -309,15 +325,22 @@ class MainWindow(QMainWindow):
         self.cancel_btn.setEnabled(False)
         self.progress_bar.setVisible(False)
 
+        # Build summary message
+        summary_parts = [f"Processed {result.total_files} file(s):"]
+        if result.total_images > 0:
+            summary_parts.append(f"- Images: {result.total_images}")
+        if result.total_videos > 0:
+            summary_parts.append(f"- Videos: {result.total_videos}")
+        summary_parts.append(f"- Successful: {result.successful}")
+        summary_parts.append(f"- Failed: {result.failed}")
+        summary_parts.append(f"- Time: {result.total_time_ms / 1000:.1f} seconds")
+
         QMessageBox.information(
             self,
             "Processing Complete",
-            f"Processed {result.total_images} images:\n"
-            f"- Successful: {result.successful}\n"
-            f"- Failed: {result.failed}\n"
-            f"- Time: {result.total_time_ms / 1000:.1f} seconds"
+            "\n".join(summary_parts)
         )
-        self.statusbar.showMessage(f"Completed: {result.successful}/{result.total_images} images")
+        self.statusbar.showMessage(f"Completed: {result.successful}/{result.total_files} file(s)")
 
     def on_processing_error(self, error: str):
         """Handle processing error"""
@@ -347,10 +370,11 @@ class MainWindow(QMainWindow):
             self,
             f"About {APP_NAME}",
             f"<h3>{APP_NAME} v{APP_VERSION}</h3>"
-            "<p>A powerful batch watermarking tool for images.</p>"
+            "<p>A powerful batch watermarking tool for images and videos.</p>"
             "<p>Features:</p>"
             "<ul>"
             "<li>Text and image watermarks</li>"
+            "<li>Image and video support</li>"
             "<li>Batch processing with multi-threading</li>"
             "<li>9-point positioning system</li>"
             "<li>EXIF data integration</li>"

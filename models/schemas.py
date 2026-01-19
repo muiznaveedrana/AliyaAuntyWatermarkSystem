@@ -23,10 +23,34 @@ class WatermarkPosition(str, Enum):
 
 
 class OutputFormat(str, Enum):
-    """Supported output formats"""
+    """Supported output formats for images"""
     JPEG = "JPEG"
     PNG = "PNG"
     WEBP = "WEBP"
+
+
+class VideoOutputFormat(str, Enum):
+    """Supported output formats for videos"""
+    MP4 = "mp4"
+    AVI = "avi"
+    MOV = "mov"
+    WEBM = "webm"
+
+
+class VideoCodec(str, Enum):
+    """Supported video codecs"""
+    H264 = "libx264"
+    H265 = "libx265"
+    VP9 = "libvpx-vp9"
+    MPEG4 = "mpeg4"
+
+
+class VideoPreset(str, Enum):
+    """Video encoding presets (speed vs quality tradeoff)"""
+    ULTRAFAST = "ultrafast"
+    FAST = "fast"
+    MEDIUM = "medium"
+    SLOW = "slow"
 
 
 class TextWatermarkConfig(BaseModel):
@@ -92,6 +116,34 @@ class ImageWatermarkConfig(BaseModel):
     grayscale: bool = Field(default=False, description="Convert logo to grayscale")
 
 
+class VideoProcessConfig(BaseModel):
+    """Configuration for video processing"""
+    output_format: VideoOutputFormat = Field(
+        default=VideoOutputFormat.MP4,
+        description="Output video format"
+    )
+    codec: VideoCodec = Field(
+        default=VideoCodec.H264,
+        description="Video codec"
+    )
+    preset: VideoPreset = Field(
+        default=VideoPreset.MEDIUM,
+        description="Encoding preset (speed vs quality)"
+    )
+    bitrate: Optional[str] = Field(
+        default=None,
+        description="Video bitrate (e.g., '5000k', '10M')"
+    )
+    audio_codec: str = Field(
+        default="aac",
+        description="Audio codec"
+    )
+    preserve_audio: bool = Field(
+        default=True,
+        description="Preserve original audio"
+    )
+
+
 class BatchProcessConfig(BaseModel):
     """Configuration for batch processing"""
     text_watermarks: List[TextWatermarkConfig] = Field(
@@ -102,6 +154,7 @@ class BatchProcessConfig(BaseModel):
         default=[],
         description="List of image watermarks to apply"
     )
+    # Image output settings
     output_format: OutputFormat = Field(
         default=OutputFormat.JPEG,
         description="Output image format"
@@ -119,6 +172,11 @@ class BatchProcessConfig(BaseModel):
     prefix: str = Field(default="", max_length=50, description="Output filename prefix")
     suffix: str = Field(default="_watermarked", max_length=50, description="Output filename suffix")
     preserve_exif: bool = Field(default=True, description="Preserve EXIF data in output")
+    # Video output settings
+    video_config: VideoProcessConfig = Field(
+        default_factory=VideoProcessConfig,
+        description="Video processing configuration"
+    )
 
 
 class WatermarkProfile(BaseModel):
@@ -130,8 +188,14 @@ class WatermarkProfile(BaseModel):
     updated_at: Optional[str] = Field(default=None, description="Last update timestamp")
 
 
+class MediaType(str, Enum):
+    """Type of media file"""
+    IMAGE = "image"
+    VIDEO = "video"
+
+
 class ProcessingResult(BaseModel):
-    """Result of processing a single image"""
+    """Result of processing a single file"""
     input_file: str = Field(..., description="Input filename")
     output_file: Optional[str] = Field(default=None, description="Output filename")
     success: bool = Field(..., description="Processing success status")
@@ -139,11 +203,15 @@ class ProcessingResult(BaseModel):
     processing_time_ms: float = Field(default=0, description="Processing time in milliseconds")
     original_size: Optional[Tuple[int, int]] = Field(default=None, description="Original dimensions")
     output_size: Optional[Tuple[int, int]] = Field(default=None, description="Output dimensions")
+    media_type: MediaType = Field(default=MediaType.IMAGE, description="Type of media processed")
+    duration_seconds: Optional[float] = Field(default=None, description="Video duration in seconds")
 
 
 class BatchProcessingResult(BaseModel):
     """Result of batch processing"""
-    total_images: int = Field(..., description="Total number of images")
+    total_files: int = Field(..., description="Total number of files")
+    total_images: int = Field(default=0, description="Total number of images")
+    total_videos: int = Field(default=0, description="Total number of videos")
     successful: int = Field(default=0, description="Successfully processed count")
     failed: int = Field(default=0, description="Failed count")
     total_time_ms: float = Field(default=0, description="Total processing time")

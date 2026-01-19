@@ -165,10 +165,3 @@ pyinstaller --onefile --windowed --name "BatchWatermark" main.py
 
 The executable will be in the `dist/` folder.
 
-## License
-
-MIT License
-
----
-
-*Inspired by popular watermarking tools: [Visual Watermark](https://www.visualwatermark.com/), [uMark](https://www.uconomix.com/products/umark/), [PhotoMarks](https://photomarks.app/)*

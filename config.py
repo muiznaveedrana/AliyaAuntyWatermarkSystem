@@ -16,13 +16,21 @@ OUTPUT_FOLDER.mkdir(exist_ok=True)
 PROFILES_FOLDER.mkdir(exist_ok=True)
 
 # Supported image formats
-SUPPORTED_INPUT_FORMATS = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.tif', '.webp'}
+SUPPORTED_IMAGE_FORMATS = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.tif', '.webp'}
 SUPPORTED_OUTPUT_FORMATS = {'JPEG', 'PNG', 'WEBP'}
+
+# Supported video formats
+SUPPORTED_VIDEO_FORMATS = {'.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm', '.m4v'}
+SUPPORTED_VIDEO_OUTPUT_FORMATS = {'mp4', 'avi', 'mov', 'webm'}
+
+# Combined formats for file dialogs
+SUPPORTED_INPUT_FORMATS = SUPPORTED_IMAGE_FORMATS | SUPPORTED_VIDEO_FORMATS
 
 # Processing settings
 MAX_WORKERS = os.cpu_count() or 4  # Number of threads for batch processing
-MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB max file size
-MAX_BATCH_SIZE = 500  # Maximum images per batch
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB max file size for images
+MAX_VIDEO_FILE_SIZE = 2 * 1024 * 1024 * 1024  # 2GB max file size for videos
+MAX_BATCH_SIZE = 500  # Maximum files per batch
 
 # Default watermark settings
 DEFAULT_OPACITY = 0.5

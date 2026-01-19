@@ -1,5 +1,5 @@
 """
-Image list panel - displays and manages the list of images to process
+Media list panel - displays and manages the list of images and videos to process
 """
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QListWidget, QListWidgetItem,
@@ -11,16 +11,26 @@ from PyQt6.QtGui import QIcon, QPixmap
 from pathlib import Path
 from typing import List
 
+from config import SUPPORTED_IMAGE_FORMATS, SUPPORTED_VIDEO_FORMATS
+
 
 class ImageListPanel(QFrame):
-    """Panel for displaying and managing the image list"""
+    """Panel for displaying and managing the media list (images and videos)"""
 
     selection_changed = pyqtSignal(object)  # Emits Path or None
 
     def __init__(self):
         super().__init__()
-        self.image_paths: List[Path] = []
+        self.image_paths: List[Path] = []  # Keep name for compatibility, but holds all media
         self.setup_ui()
+
+    def _is_video(self, path: Path) -> bool:
+        """Check if file is a video"""
+        return path.suffix.lower() in SUPPORTED_VIDEO_FORMATS
+
+    def _is_image(self, path: Path) -> bool:
+        """Check if file is an image"""
+        return path.suffix.lower() in SUPPORTED_IMAGE_FORMATS
 
     def setup_ui(self):
         """Setup the panel UI"""
@@ -29,12 +39,12 @@ class ImageListPanel(QFrame):
         layout.setSpacing(12)
 
         # Header
-        header = QLabel("Images to Process")
+        header = QLabel("Files to Process")
         header.setProperty("header", True)
         layout.addWidget(header)
 
-        # Image count label
-        self.count_label = QLabel("No images added")
+        # File count label
+        self.count_label = QLabel("No files added")
         self.count_label.setStyleSheet("color: #888; font-size: 12px;")
         layout.addWidget(self.count_label)
 
@@ -61,11 +71,15 @@ class ImageListPanel(QFrame):
         layout.addLayout(btn_layout)
 
     def add_images(self, paths: List[Path]):
-        """Add images to the list"""
+        """Add images/videos to the list"""
         for path in paths:
             if path not in self.image_paths:
                 self.image_paths.append(path)
-                item = QListWidgetItem(f"  {path.name}")
+                # Add icon indicator for videos
+                if self._is_video(path):
+                    item = QListWidgetItem(f"  [VIDEO] {path.name}")
+                else:
+                    item = QListWidgetItem(f"  {path.name}")
                 item.setData(Qt.ItemDataRole.UserRole, path)
                 item.setToolTip(str(path))
                 self.list_widget.addItem(item)
@@ -90,12 +104,18 @@ class ImageListPanel(QFrame):
     def _update_count(self):
         """Update the count label"""
         count = len(self.image_paths)
+        image_count = sum(1 for p in self.image_paths if self._is_image(p))
+        video_count = sum(1 for p in self.image_paths if self._is_video(p))
+
         if count == 0:
-            self.count_label.setText("No images added")
-        elif count == 1:
-            self.count_label.setText("1 image")
+            self.count_label.setText("No files added")
         else:
-            self.count_label.setText(f"{count} images")
+            parts = []
+            if image_count > 0:
+                parts.append(f"{image_count} image{'s' if image_count != 1 else ''}")
+            if video_count > 0:
+                parts.append(f"{video_count} video{'s' if video_count != 1 else ''}")
+            self.count_label.setText(" | ".join(parts))
 
     def on_selection_changed(self, current, previous):
         """Handle selection change"""

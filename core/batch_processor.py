@@ -1,5 +1,5 @@
 """
-Batch processing module with multi-threading support
+Batch processing module with multi-threading support for images and videos
 """
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -13,6 +13,7 @@ from PIL import Image
 from .watermark_engine import WatermarkEngine
 from .text_watermark import TextWatermark
 from .image_watermark import ImageWatermark
+from .video_processor import VideoProcessor
 from .exif_handler import ExifHandler
 from models.schemas import (
     BatchProcessConfig,
@@ -20,11 +21,14 @@ from models.schemas import (
     BatchProcessingResult,
     TextWatermarkConfig,
     ImageWatermarkConfig,
+    MediaType,
 )
 from config import (
     MAX_WORKERS,
     OUTPUT_FOLDER,
     SUPPORTED_INPUT_FORMATS,
+    SUPPORTED_IMAGE_FORMATS,
+    SUPPORTED_VIDEO_FORMATS,
 )
 
 
@@ -44,11 +48,23 @@ class BatchProcessor:
         self.engine = WatermarkEngine()
         self.text_watermark = TextWatermark(self.engine)
         self.image_watermark = ImageWatermark(self.engine)
+        self.video_processor = VideoProcessor()
         self.exif_handler = ExifHandler()
 
         # Progress tracking
         self._progress_callback: Optional[Callable[[int, int, str], None]] = None
         self._cancel_flag = False
+
+    def _get_media_type(self, path: Path) -> MediaType:
+        """Determine if a file is an image or video based on extension"""
+        suffix = path.suffix.lower()
+        if suffix in SUPPORTED_VIDEO_FORMATS:
+            return MediaType.VIDEO
+        return MediaType.IMAGE
+
+    def _is_video(self, path: Path) -> bool:
+        """Check if file is a video"""
+        return self._get_media_type(path) == MediaType.VIDEO
 
     def set_progress_callback(
         self,
@@ -69,6 +85,28 @@ class BatchProcessor:
     def reset(self) -> None:
         """Reset cancel flag for new processing"""
         self._cancel_flag = False
+
+    def process_single_file(
+        self,
+        input_path: Path,
+        config: BatchProcessConfig,
+        output_folder: Optional[Path] = None
+    ) -> ProcessingResult:
+        """
+        Process a single file (image or video) with watermarks
+
+        Args:
+            input_path: Path to input file
+            config: Batch processing configuration
+            output_folder: Optional output folder override
+
+        Returns:
+            ProcessingResult with status and details
+        """
+        if self._is_video(input_path):
+            return self.process_single_video(input_path, config, output_folder)
+        else:
+            return self.process_single_image(input_path, config, output_folder)
 
     def process_single_image(
         self,
@@ -156,7 +194,8 @@ class BatchProcessor:
                 success=True,
                 processing_time_ms=processing_time,
                 original_size=original_size,
-                output_size=image.size
+                output_size=image.size,
+                media_type=MediaType.IMAGE
             )
 
         except Exception as e:
@@ -167,7 +206,89 @@ class BatchProcessor:
                 input_file=input_path.name,
                 success=False,
                 error=str(e),
-                processing_time_ms=processing_time
+                processing_time_ms=processing_time,
+                media_type=MediaType.IMAGE
+            )
+
+    def process_single_video(
+        self,
+        input_path: Path,
+        config: BatchProcessConfig,
+        output_folder: Optional[Path] = None
+    ) -> ProcessingResult:
+        """
+        Process a single video with watermarks
+
+        Args:
+            input_path: Path to input video
+            config: Batch processing configuration
+            output_folder: Optional output folder override
+
+        Returns:
+            ProcessingResult with status and details
+        """
+        start_time = time.time()
+        output_folder = output_folder or self.output_folder
+
+        try:
+            # Get video info
+            video_info = self.video_processor.get_video_info(input_path)
+            if not video_info:
+                raise ValueError("Could not read video file")
+
+            original_size = (video_info['width'], video_info['height'])
+            duration = video_info.get('duration', 0)
+
+            # Generate output filename
+            video_config = config.video_config
+            output_ext = f".{video_config.output_format.value}"
+            output_filename = f"{config.prefix}{input_path.stem}{config.suffix}{output_ext}"
+            output_path = output_folder / output_filename
+
+            # Process video
+            success = self.video_processor.process_video(
+                input_path=input_path,
+                output_path=output_path,
+                text_watermarks=config.text_watermarks,
+                image_watermarks=config.image_watermarks,
+                output_codec=video_config.codec.value,
+                audio_codec=video_config.audio_codec if video_config.preserve_audio else None,
+                bitrate=video_config.bitrate,
+                preset=video_config.preset.value,
+            )
+
+            processing_time = (time.time() - start_time) * 1000
+
+            if success:
+                return ProcessingResult(
+                    input_file=input_path.name,
+                    output_file=output_filename,
+                    success=True,
+                    processing_time_ms=processing_time,
+                    original_size=original_size,
+                    output_size=original_size,  # Video size unchanged
+                    media_type=MediaType.VIDEO,
+                    duration_seconds=duration
+                )
+            else:
+                return ProcessingResult(
+                    input_file=input_path.name,
+                    success=False,
+                    error="Video processing failed",
+                    processing_time_ms=processing_time,
+                    media_type=MediaType.VIDEO
+                )
+
+        except Exception as e:
+            processing_time = (time.time() - start_time) * 1000
+            logger.error(f"Error processing video {input_path}: {str(e)}")
+
+            return ProcessingResult(
+                input_file=input_path.name,
+                success=False,
+                error=str(e),
+                processing_time_ms=processing_time,
+                media_type=MediaType.VIDEO
             )
 
     def process_batch(
@@ -177,10 +298,10 @@ class BatchProcessor:
         output_folder: Optional[Path] = None
     ) -> BatchProcessingResult:
         """
-        Process multiple images in parallel
+        Process multiple files (images and videos) in parallel
 
         Args:
-            input_paths: List of input image paths
+            input_paths: List of input file paths
             config: Batch processing configuration
             output_folder: Optional output folder override
 
@@ -196,19 +317,27 @@ class BatchProcessor:
         successful = 0
         failed = 0
 
-        # Filter valid image files
+        # Filter valid files (images and videos)
         valid_paths = [
             p for p in input_paths
             if p.suffix.lower() in SUPPORTED_INPUT_FORMATS
         ]
 
+        # Count images and videos
+        image_paths = [p for p in valid_paths if p.suffix.lower() in SUPPORTED_IMAGE_FORMATS]
+        video_paths = [p for p in valid_paths if p.suffix.lower() in SUPPORTED_VIDEO_FORMATS]
+        total_images = len(image_paths)
+        total_videos = len(video_paths)
+
         total = len(valid_paths)
 
+        # Process videos sequentially (they're resource-intensive)
+        # Process images in parallel
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            # Submit all tasks
+            # Submit all tasks - use process_single_file which routes appropriately
             future_to_path = {
                 executor.submit(
-                    self.process_single_image,
+                    self.process_single_file,
                     path,
                     config,
                     output_folder
@@ -237,10 +366,12 @@ class BatchProcessor:
 
                 except Exception as e:
                     logger.error(f"Future error for {path}: {str(e)}")
+                    media_type = MediaType.VIDEO if self._is_video(path) else MediaType.IMAGE
                     results.append(ProcessingResult(
                         input_file=path.name,
                         success=False,
-                        error=str(e)
+                        error=str(e),
+                        media_type=media_type
                     ))
                     failed += 1
 
@@ -251,7 +382,9 @@ class BatchProcessor:
         total_time = (time.time() - start_time) * 1000
 
         return BatchProcessingResult(
-            total_images=total,
+            total_files=total,
+            total_images=total_images,
+            total_videos=total_videos,
             successful=successful,
             failed=failed,
             total_time_ms=total_time,
