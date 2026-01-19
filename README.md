@@ -18,8 +18,8 @@ A powerful desktop application for batch watermarking images, inspired by popula
 - [x] **Multi-threaded Processing** - Utilize multiple CPU cores for speed
 
 ### Supported Formats
-- **Input**: JPEG, PNG, BMP, GIF, TIFF, WebP
-- **Output**: JPEG, PNG, WebP
+- **Input**: JPEG, PNG, BMP, GIF, TIFF, WebP, MP4
+- **Output**: JPEG, PNG, WebP, MP4
 
 ## Screenshots
 
